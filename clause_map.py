@@ -30,6 +30,14 @@ def _clause_mapping_latest_on_mutation(questdb_query):
     # mutation goes here
     return postgres_query
 
+def _clause_mapping_string_type(query):
+    questdb_map = {"STRING": "SYMBOL"}
+    postgres_map = {"STRING": "VARCHAR(64)"}
+    questdb_query = query.replace("STRING", questdb_map["STRING"])
+    postgres_query = query.replace("STRING", postgres_map["STRING"])
+    async_queries = [questdb_query, postgres_query]
+    return async_queries
+
 def clauses_mapping(shared_clauses, reserved_clauses, questdb_api, postgres_api):
     extended_shared_clauses = []
     return extended_shared_clauses
