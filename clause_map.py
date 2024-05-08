@@ -39,5 +39,10 @@ def _clause_mapping_string_type(query):
     return async_queries
 
 def clauses_mapping(shared_clauses, reserved_clauses, questdb_api, postgres_api):
-    extended_shared_clauses = []
+    extended_shared_clauses = shared_clauses+[]
     return extended_shared_clauses
+
+def async_mapping(query):
+    questdb_query = query
+    postgres_query = query
+    return [questdb_query, postgres_query]

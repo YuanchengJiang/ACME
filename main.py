@@ -44,8 +44,11 @@ def main():
         for i in range(10000):
             query = query_generator.random_query()
             print(query)
-            questdb_result = questdb_execute_query(questdb_api, query)
-            postgres_result = postgres_execute_query(postgres_api, query)
+            input()
+            questdb_result = questdb_execute_query(questdb_api, query[0])
+            postgres_result = postgres_execute_query(postgres_api, query[1])
             result_analysis(questdb_result, postgres_result)
+
+
 
 main()

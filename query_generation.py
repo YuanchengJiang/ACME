@@ -1,6 +1,6 @@
 import string
 import datetime
-from clause_map import _clause_mapping_string_type
+from clause_map import _clause_mapping_string_type, async_mapping
 from random import choice, randint, random
 
 # generating random strings for insert statements
@@ -89,7 +89,7 @@ class AsyncQueryGenerator:
                         f"{column_name} NOT BETWEEN '0' AND {self.fuzzy_exp()}",
                     ]
                     predicates.append(choice(between_predicates))
-        return ' '.join(predicates)
+        return ' AND '.join(predicates)
 
     def random_timestamp_predicates(self, column_name):
         predicates = ["True"]
@@ -120,9 +120,16 @@ class AsyncQueryGenerator:
 
     def random_predicates_no_join(self):
         predicates = []
-        predicates.append(self.random_int_predicates("c1"))
-        predicates.append(self.random_string_predicates("c2"))
-        predicates.append(self.random_timestamp_predicates("c3"))
+        predicates.append(self.random_int_predicates("c0"))
+        predicates.append(self.random_string_predicates("c1"))
+        predicates.append(self.random_timestamp_predicates("c2"))
+        return ' AND '.join(predicates)
+
+    def random_predicates_for_joins(self):
+        predicates = []
+        predicates.append(
+            f"CAST({choice(self.talias)}.{choice(self.columns)} AS SYMBOL) <> CAST({choice(self.talias)}.{choice(self.columns)} AS SYMBOL)"
+        )
         return ' AND '.join(predicates)
 
     """
@@ -185,10 +192,152 @@ class AsyncQueryGenerator:
         update_query = f"UPDATE {table_name} SET {updates} {predicates}"
         return update_query
 
+    """
+    4. SELECT statement
+    """
+
+    def random_clause_with(self):
+        _with = []
+        _with.append("max_int AS (SELECT max(c0) from {})".format(choice(self.tables)))
+        _with.append("min_int AS (SELECT min(c0) from {})".format(choice(self.tables)))
+        _with.append("max_timestamp AS (SELECT max(c2) from {})".format(choice(self.tables)))
+        _with.append("min_timestamp AS (SELECT min(c2) from {})".format(choice(self.tables)))
+        _with = "WITH {}".format(','.join(_with))
+        return _with
+
+    def random_aggregation(self):
+        aggregation_foos = []
+        if "COUNT" in self.shared_clauses:
+            aggregation_foos.append("COUNT")
+        if "AVG" in self.shared_clauses:
+            aggregation_foos.append("AVG")
+        if "MAX" in self.shared_clauses:
+            aggregation_foos.append("MAX")
+        if "MIN" in self.shared_clauses:
+            aggregation_foos.append("MIN")
+        if "SUM" in self.shared_clauses:
+            aggregation_foos.append("SUM")
+        if len(aggregation_foos)==0:
+            print("Alert: no available aggregate function!")
+            return "1"
+        else:
+            return f"{choice(aggregation_foos)}({choice(self.columns)})"
+
+    def random_data(self):
+        _data = []
+        if "CASE" in self.shared_clauses:
+            _data.append(
+                f"(CASE WHEN True THEN {choice(self.columns)} ELSE {choice(self.columns)} END)"
+                )
+        if "COUNT" in self.shared_clauses:
+            _data.append(f"COUNT({choice(self.columns)})")
+        if "OVER_PARTITION" in self.shared_clauses:
+            _data.append(f"{self.random_aggregation()} OVER(PARTITION BY {choice(self.columns)})")
+        return choice(_data)
+
+    def random_table(self):
+        if "TABLE_SUBQUERY" not in self.shared_clauses:
+            table = self.tables
+            self.tt.append(table)
+            return table
+        else:
+            # TODO: add predicates
+            _table_subquery = f"(SELECT * FROM {choice(self.tables)})"
+            return _table_subquery
+
+    def random_clause_join(self):
+        _join_tables = randint(1,3)
+        _joins = ["JOIN"]
+        if "CROSS_JOIN" in self.shared_clauses:
+            _joins.append("CROSS JOIN")
+        if "INNER_JOIN" in self.shared_clauses:
+            _joins.append("INNER JOIN")
+        # TODO: LEFT/RIGHT OUTER JOIN
+        joins = []
+        for i in range(_join_tables):
+            join_clause = choice(_joins)
+            join_table = choice(self.tables)
+            next_join = f"{join_clause} {join_table} AS T{i+2}"
+            self.tt.append(join_table)
+            self.tt.append(f"T{i+2}")
+            self.talias.append(f"T{i+2}")
+            if join_clause!="CROSS JOIN":
+                next_join += " ON "+self.random_predicates_for_joins()
+            joins.append(next_join)
+        return ' '.join(joins)
+
+    def random_predicate(self):
+        return " WHERE "+self.random_predicates_for_joins()
+
+    def random_clause_partition(self):
+        return ""
+
+    def random_clause_interp(self):
+        return ""
+
+    def random_clause_window(self):
+        return ""
+
+    def random_clause_group(self):
+        return ""
+
+    def random_clause_having(self):
+        return ""
+
+    def random_clause_order(self):
+        return ""
+
+    def random_clause_limit(self):
+        return ""
+
+    """
+    5. sanitize check
+    to pre-check grammar issues
+    """
+    def select_query_sanitize_check(self, query):
+        if "T2" in self.tt:
+            query = query.replace(" c0 ", f" {choice(self.talias)}.c0 ")
+            query = query.replace(" c1 ", f" {choice(self.talias)}.c1 ")
+            query = query.replace(" c2 ", f" {choice(self.talias)}.c2 ")
+            query = query.replace("(c0)", f"({choice(self.talias)}.c0)")
+            query = query.replace("(c1)", f"({choice(self.talias)}.c1)")
+            query = query.replace("(c2)", f"({choice(self.talias)}.c2)")
+            query = query.replace(" c0)", f" {choice(self.talias)}.c0)")
+            query = query.replace(" c1)", f" {choice(self.talias)}.c1)")
+            query = query.replace(" c2)", f" {choice(self.talias)}.c2)")
+        return query
+
     def random_select_query(self):
-        return "SELECT 1"
+        _with = self.random_clause_with() if "WITH" in self.shared_clauses else ""
+        _data = self.random_data()
+        _table = self.random_table()
+        # TODO: fuzz AS?
+        _alias = "AS T1"
+        self.tt.append("T1")
+        self.talias.append("T1")
+        _join = self.random_clause_join() if "JOIN" in self.shared_clauses else ""
+        _predicate = self.random_predicate()
+        _partition = self.random_clause_partition()
+        _interp = self.random_clause_interp()
+        _window = self.random_clause_window()
+        _group = self.random_clause_group()
+        _having = self.random_clause_having()
+        _order = self.random_clause_order()
+        _limit = self.random_clause_limit()
+        select_query = f"{_with} SELECT {_data} FROM {_table} {_alias} {_join} {_predicate} {_partition} {_interp} {_window} {_group} {_having} {_order} {_limit}"
+
+        select_query = self.select_query_sanitize_check(select_query)
+        select_query = async_mapping(select_query)
+
+        return select_query
 
     def random_query(self):
+        # available/usable tables/alias
+        self.tt = []
+        # alias
+        self.talias = []
+        # available/usable columns/expressions/alias
+        self.ee = []
         select_query = 0.8
         insert_query = 0.1
         update_query = 0.1
