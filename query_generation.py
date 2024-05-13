@@ -28,6 +28,13 @@ class AsyncQueryGenerator:
     def __init__(self, extended_shared_clauses):
         self.shared_clauses = extended_shared_clauses
         self.shared_predicate_clauses = None
+        self.concats = []
+        if "UNION" in self.shared_clauses:
+            self.concats.append("UNION")
+        if "EXCEPT" in self.shared_clauses:
+            self.concats.append("EXCEPT")
+        if "INTERSECT" in self.shared_clauses:
+            self.concats.append("INTERSECT")
 
     def fuzzy_exp(self):
         return choice(["NULL"])
@@ -49,7 +56,7 @@ class AsyncQueryGenerator:
             if choice([True,False]):
                 if each_shared_clause=="IN":
                     in_predicates = [
-                        f"{column_name} IN ({column_name},{self.fuzzy_exp()})",
+                        f"{column_name} IN (0,{self.fuzzy_exp()})",
                         f"{column_name} NOT IN (0,1,2,{self.fuzzy_exp()})",
                     ]
                     predicates.append(choice(in_predicates))
@@ -58,8 +65,8 @@ class AsyncQueryGenerator:
                     pass
                 elif each_shared_clause=="BETWEEN":
                     between_predicates = [
-                        f"{column_name} BETWEEN {column_name} AND {self.fuzzy_exp()}",
-                        f"{column_name} NOT BETWEEN 0 AND {self.fuzzy_exp()}",
+                        f"{column_name} BETWEEN {column_name} AND {column_name}",
+                        f"{column_name} NOT BETWEEN {column_name} AND {column_name}",
                     ]
                     predicates.append(choice(between_predicates))
         return ' AND '.join(predicates)
@@ -85,8 +92,8 @@ class AsyncQueryGenerator:
                     pass
                 elif each_shared_clause=="BETWEEN":
                     between_predicates = [
-                        f"{column_name} BETWEEN {column_name} AND {self.fuzzy_exp()}",
-                        f"{column_name} NOT BETWEEN '0' AND {self.fuzzy_exp()}",
+                        f"{column_name} BETWEEN {column_name} AND {column_name}",
+                        f"{column_name} NOT BETWEEN {column_name} AND {column_name}",
                     ]
                     predicates.append(choice(between_predicates))
         return ' AND '.join(predicates)
@@ -113,7 +120,7 @@ class AsyncQueryGenerator:
                 elif each_shared_clause=="BETWEEN":
                     between_predicates = [
                         f"{column_name} BETWEEN {column_name} AND {self.fuzzy_exp()}",
-                        f"{column_name} NOT BETWEEN '0' AND {self.fuzzy_exp()}",
+                        f"{column_name} NOT BETWEEN {column_name} AND {self.fuzzy_exp()}",
                     ]
                     predicates.append(choice(between_predicates))
         return ' AND '.join(predicates)
@@ -127,9 +134,12 @@ class AsyncQueryGenerator:
 
     def random_predicates_for_joins(self):
         predicates = []
-        predicates.append(
-            f"CAST({choice(self.talias)}.{choice(self.columns)} AS SYMBOL) <> CAST({choice(self.talias)}.{choice(self.columns)} AS SYMBOL)"
-        )
+        predicates.append(self.random_int_predicates("c0"))
+        predicates.append(self.random_string_predicates("c1"))
+        predicates.append(self.random_timestamp_predicates("c2"))
+        # predicates.append(
+        #     f"CAST({choice(self.talias)}.{choice(self.columns)} AS SYMBOL) <> CAST({choice(self.talias)}.{choice(self.columns)} AS SYMBOL)"
+        # )
         return ' AND '.join(predicates)
 
     """
@@ -170,11 +180,13 @@ class AsyncQueryGenerator:
     """
 
     def random_insert_query(self, table_name):
+        self.init_query()
         random_INT = randint(-1000, 1000)
         random_STRING = random_string()
         random_TIMESTAMP = random_timestamp()
         values = f"{random_INT}, '{random_STRING}', '{random_TIMESTAMP}'"
         insert_query = f"INSERT INTO {table_name} VALUES ({values});"
+        insert_query = async_mapping(insert_query)
         return insert_query
 
     """
@@ -182,6 +194,7 @@ class AsyncQueryGenerator:
     """
 
     def random_update_query(self, table_name):
+        self.init_query()
         # TODO: update can be complex with JOINs, etc.
         random_INT = randint(-1000, 1000)
         random_STRING = random_string()
@@ -190,6 +203,7 @@ class AsyncQueryGenerator:
         random_predicate = self.random_predicates_no_join()
         predicates = f"WHERE {random_predicate}"
         update_query = f"UPDATE {table_name} SET {updates} {predicates}"
+        update_query = async_mapping(update_query)
         return update_query
 
     """
@@ -223,16 +237,23 @@ class AsyncQueryGenerator:
         else:
             return f"{choice(aggregation_foos)}({choice(self.columns)})"
 
+    def random_over_partition_aggregation(self):
+        aggregation_foos = []
+        if "AVG" in self.shared_clauses:
+            aggregation_foos.append("AVG")
+        return f"{choice(aggregation_foos)}({choice(self.columns)})"
+
     def random_data(self):
         _data = []
         if "CASE" in self.shared_clauses:
+            column = choice(self.columns)
             _data.append(
-                f"(CASE WHEN True THEN {choice(self.columns)} ELSE {choice(self.columns)} END)"
+                f"(CASE WHEN True THEN {column} ELSE {column} END)"
                 )
         if "COUNT" in self.shared_clauses:
             _data.append(f"COUNT({choice(self.columns)})")
         if "OVER_PARTITION" in self.shared_clauses:
-            _data.append(f"{self.random_aggregation()} OVER(PARTITION BY {choice(self.columns)})")
+            _data.append(f"AVG(c0) OVER(PARTITION BY {choice(self.columns)})")
         return choice(_data)
 
     def random_table(self):
@@ -291,11 +312,23 @@ class AsyncQueryGenerator:
         return ""
 
     """
-    5. sanitize check
+    5. overall mutation
+    """
+    def query_mutation_add_cast(self, query):
+        query = query.replace(" c0", " CAST(c0 AS STRING)", randint(0,2))
+        query = query.replace(" c1", " CAST(c1 AS STRING)", randint(0,2))
+        query = query.replace(" c2", " CAST(c2 AS STRING)", randint(0,2))
+        return query
+
+    """
+    6. sanitize check
     to pre-check grammar issues
     """
     def select_query_sanitize_check(self, query):
         if "T2" in self.tt:
+            # query = query.replace("c0", f"{choice(self.talias)}.c0")
+            # query = query.replace("c1", f"{choice(self.talias)}.c1")
+            # query = query.replace("c2", f"{choice(self.talias)}.c2")
             query = query.replace(" c0 ", f" {choice(self.talias)}.c0 ")
             query = query.replace(" c1 ", f" {choice(self.talias)}.c1 ")
             query = query.replace(" c2 ", f" {choice(self.talias)}.c2 ")
@@ -307,9 +340,10 @@ class AsyncQueryGenerator:
             query = query.replace(" c2)", f" {choice(self.talias)}.c2)")
         return query
 
-    def random_select_query(self):
+    def random_select_query(self, _data=None):
+        self.init_query()
         _with = self.random_clause_with() if "WITH" in self.shared_clauses else ""
-        _data = self.random_data()
+        _data = self.random_data() if _data==None else _data
         _table = self.random_table()
         # TODO: fuzz AS?
         _alias = "AS T1"
@@ -326,23 +360,36 @@ class AsyncQueryGenerator:
         _limit = self.random_clause_limit()
         select_query = f"{_with} SELECT {_data} FROM {_table} {_alias} {_join} {_predicate} {_partition} {_interp} {_window} {_group} {_having} {_order} {_limit}"
 
+        if "CAST" in self.shared_clauses:
+            select_query = self.query_mutation_add_cast(select_query)
+
         select_query = self.select_query_sanitize_check(select_query)
         select_query = async_mapping(select_query)
 
-        return select_query
+        return select_query, _data
 
-    def random_query(self):
+    def init_query(self):
         # available/usable tables/alias
         self.tt = []
         # alias
         self.talias = []
         # available/usable columns/expressions/alias
         self.ee = []
+
+    def random_query(self):
         select_query = 0.8
-        insert_query = 0.1
-        update_query = 0.1
+        insert_query = 0.2
+        update_query = 0
         if random()<select_query:
-            return self.random_select_query()
+            select_query, _data = self.random_select_query()
+            if len(self.concats)>0:
+                query_complexity = randint(0,2)
+                for i in range(query_complexity):
+                    next_query, _data = self.random_select_query(_data)
+                    concat = choice(self.concats)
+                    select_query[0] = f"({select_query[0]}) {concat} ({next_query[0]})"
+                    select_query[1] = f"({select_query[1]}) {concat} ({next_query[1]})"
+            return select_query
         elif random()>=1-update_query:
             return self.random_update_query(choice(self.tables))
         else:
