@@ -18,6 +18,8 @@ class ClauseMapping:
             if query_splits[i]=="IN":
                 in_operations.append(
                     f"{query_splits[i-1]} IN {query_splits[i+1]}"
+                ) if query_splits[i-1]!="NOT" else in_operations.append(
+                    f"{query_splits[i-2]} NOT IN {query_splits[i+1]}"
                 )
         return in_operations
 
@@ -33,7 +35,7 @@ class ClauseMapping:
             in_list = each_in_operation.split(' ')[-1]
             query[0] = query[0].replace(
                 each_in_operation,
-                f"CASE WHEN NULL IN {in_list} THEN NULL ELSE f{each_in_operation} END"
+                f"CASE WHEN NULL IN {in_list} THEN NULL ELSE {each_in_operation} END"
                 )
         return query
 
@@ -56,7 +58,7 @@ class ClauseMapping:
     def main(self, query):
 
         # format queries before mapping
-        mapped_query = [self.formatting_query(query[0]), self.formatting_query(query[1])]
+        mapped_query = [self.formatting_query(query), self.formatting_query(query)]
 
         # mapping IN clause
         mapped_query = self._clause_mapping_in_mutation(mapped_query)

@@ -1,6 +1,6 @@
 import string
 import datetime
-from clause_map import _clause_mapping_string_type, async_mapping
+from clause_map import ClauseMapping, async_mapping
 from random import choice, randint, random
 
 # generating random strings for insert statements
@@ -26,6 +26,7 @@ class AsyncQueryGenerator:
     columns = ["c0", "c1", "c2"]
 
     def __init__(self, extended_shared_clauses):
+        self.clause_mapping = ClauseMapping()
         self.shared_clauses = extended_shared_clauses
         self.shared_predicate_clauses = None
         self.concats = []
@@ -149,7 +150,8 @@ class AsyncQueryGenerator:
     def random_create_query(self):
         random_table_name = random_8_letters()
         create_query = f"CREATE TABLE {random_table_name} (c0 INT, c1 STRING, c2 TIMESTAMP);"
-        async_queries = _clause_mapping_string_type(create_query)
+        async_queries = self.clause_mapping.main(create_query)
+        # async_queries = _clause_mapping_string_type(create_query)
         return random_table_name, async_queries
 
     def init_table(self, questdb_api, postgres_api):
@@ -186,7 +188,6 @@ class AsyncQueryGenerator:
         random_TIMESTAMP = random_timestamp()
         values = f"{random_INT}, '{random_STRING}', '{random_TIMESTAMP}'"
         insert_query = f"INSERT INTO {table_name} VALUES ({values});"
-        insert_query = async_mapping(insert_query)
         return insert_query
 
     """
@@ -203,7 +204,6 @@ class AsyncQueryGenerator:
         random_predicate = self.random_predicates_no_join()
         predicates = f"WHERE {random_predicate}"
         update_query = f"UPDATE {table_name} SET {updates} {predicates}"
-        update_query = async_mapping(update_query)
         return update_query
 
     """
@@ -338,6 +338,9 @@ class AsyncQueryGenerator:
             query = query.replace(" c0)", f" {choice(self.talias)}.c0)")
             query = query.replace(" c1)", f" {choice(self.talias)}.c1)")
             query = query.replace(" c2)", f" {choice(self.talias)}.c2)")
+            query = query.replace("(c0,", f"({choice(self.talias)}.c0,")
+            query = query.replace("(c1,", f"({choice(self.talias)}.c1,")
+            query = query.replace("(c2,", f"({choice(self.talias)}.c2,")
         return query
 
     def random_select_query(self, _data=None):
@@ -364,7 +367,7 @@ class AsyncQueryGenerator:
             select_query = self.query_mutation_add_cast(select_query)
 
         select_query = self.select_query_sanitize_check(select_query)
-        select_query = async_mapping(select_query)
+        # select_query = async_mapping(select_query)
 
         return select_query, _data
 
@@ -387,10 +390,14 @@ class AsyncQueryGenerator:
                 for i in range(query_complexity):
                     next_query, _data = self.random_select_query(_data)
                     concat = choice(self.concats)
-                    select_query[0] = f"({select_query[0]}) {concat} ({next_query[0]})"
-                    select_query[1] = f"({select_query[1]}) {concat} ({next_query[1]})"
+                    select_query = f"({select_query}) {concat} ({next_query})"
+            select_query = self.clause_mapping.main(select_query)
             return select_query
         elif random()>=1-update_query:
-            return self.random_update_query(choice(self.tables))
+            update_query = self.random_update_query(choice(self.tables))
+            update_query = self.clause_mapping.main(update_query)
+            return update_query
         else:
-            return self.random_insert_query(choice(self.tables))
+            insert_query = self.random_insert_query(choice(self.tables))
+            insert_query = self.clause_mapping.main(insert_query)
+            return insert_query
