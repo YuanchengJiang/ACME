@@ -334,7 +334,7 @@ class AsyncQueryGenerator:
     to pre-check grammar issues
     """
     def select_query_sanitize_check(self, query):
-        if "T2" in self.tt:
+        if "T1" in self.tt:
             # query = query.replace("c0", f"{choice(self.talias)}.c0")
             # query = query.replace("c1", f"{choice(self.talias)}.c1")
             # query = query.replace("c2", f"{choice(self.talias)}.c2")
@@ -350,6 +350,23 @@ class AsyncQueryGenerator:
             query = query.replace("(c0,", f"({choice(self.talias)}.c0,")
             query = query.replace("(c1,", f"({choice(self.talias)}.c1,")
             query = query.replace("(c2,", f"({choice(self.talias)}.c2,")
+        return query
+
+    def adhoc_final_query_sanitize_check(self, query):
+        biased_talias = ["T1","T1","T1","T1","T1","T1","T2","T2","T3"]
+        if "T1" in self.tt:
+            query = query.replace(" c0 ", f" {choice(biased_talias)}.c0 ")
+            query = query.replace(" c1 ", f" {choice(biased_talias)}.c1 ")
+            query = query.replace(" c2 ", f" {choice(biased_talias)}.c2 ")
+            query = query.replace("(c0)", f"({choice(biased_talias)}.c0)")
+            query = query.replace("(c1)", f"({choice(biased_talias)}.c1)")
+            query = query.replace("(c2)", f"({choice(biased_talias)}.c2)")
+            query = query.replace(" c0)", f" {choice(biased_talias)}.c0)")
+            query = query.replace(" c1)", f" {choice(biased_talias)}.c1)")
+            query = query.replace(" c2)", f" {choice(biased_talias)}.c2)")
+            query = query.replace("(c0,", f"({choice(biased_talias)}.c0,")
+            query = query.replace("(c1,", f"({choice(biased_talias)}.c1,")
+            query = query.replace("(c2,", f"({choice(biased_talias)}.c2,")
         return query
 
     def random_select_query(self, _data=None):
@@ -381,7 +398,7 @@ class AsyncQueryGenerator:
         if "CAST" in self.shared_clauses:
             select_query = self.query_mutation_add_cast(select_query)
 
-        select_query = self.select_query_sanitize_check(select_query)
+        # select_query = self.select_query_sanitize_check(select_query)
         # select_query = async_mapping(select_query)
 
         return select_query, _data
@@ -398,21 +415,27 @@ class AsyncQueryGenerator:
         select_query = 0.8
         insert_query = 0.2
         update_query = 0
+        return_query = ""
         if random()<select_query:
             select_query, _data = self.random_select_query()
+            select_query = self.select_query_sanitize_check(select_query)
             if len(self.concats)>0:
                 query_complexity = randint(0,2)
                 for i in range(query_complexity):
                     next_query, _data = self.random_select_query(_data)
+                    next_query = self.select_query_sanitize_check(next_query)
                     concat = choice(self.concats)
                     select_query = f"({select_query}) {concat} ({next_query})"
             select_query = self.clause_mapping.main(select_query)
-            return select_query
+            return_query = select_query
         elif random()>=1-update_query:
             update_query = self.random_update_query(choice(self.tables))
             update_query = self.clause_mapping.main(update_query)
-            return update_query
+            return_query = update_query
         else:
             insert_query = self.random_insert_query(choice(self.tables))
             insert_query = self.clause_mapping.main(insert_query)
-            return insert_query
+            return_query = insert_query
+        return_query[0] = self.adhoc_final_query_sanitize_check(return_query[0])
+        return_query[1] = self.adhoc_final_query_sanitize_check(return_query[1])
+        return return_query

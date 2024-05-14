@@ -57,6 +57,26 @@ class ClauseMapping:
         query[1] = query[1].replace(" COUNT_DISTINCT(", " COUNT(DISTINCT")
         return query
 
+    def _clause_mapping_sample_by(self, query):
+        """
+        a bit complex to map SAMPLE BY: (e.g., SAMPLE BY 1d)
+        1. add one new column to extract day: EXTRACT(DAY FROM c2) AS d
+        2. add group by: GROUP BY d
+        3. add column alias to COUNT(*): COUNT(*) AS sample_by_result
+        4. wrap the whole query and only fetch the sample_by_result:
+        SELECT sample_by_result (QUERY);
+        """
+        # this is just an demo implementation
+        # ASSUMPTION: only fetct COUNT(*), use SAMPLE BY 1d
+        # step 1 and step 3:
+        col = 'COUNT(*) AS sample_by_result, EXTRACT(DAY FROM c2) AS d'
+        query = query.replace('COUNT(*)', col)
+        # step 2:
+        query = query.replace('SAMPLE BY 1d', 'GROUP BY d')
+        # step 4:
+        query = f"SELECT sample_by_result from ({query})"
+        return query
+
     def main(self, query):
 
         # format queries before mapping
@@ -71,8 +91,11 @@ class ClauseMapping:
         # mapping BETWEEN clause
         mapped_query = self._clause_mapping_between_symmetric(mapped_query)
 
-        # mapping
-        # mapped_query = self.
+        # mapping SAMPLE BY clause
+        if "SAMPLE BY" in mapped_query[0]:
+            # when SAMPLE BY is used in questdb query
+            # we map SAMPLE BY back to valid clauses in postgres
+            mapped_query[1] = self._clause_mapping_sample_by(mapped_query[1])
 
         return mapped_query
 

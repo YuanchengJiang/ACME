@@ -1,7 +1,7 @@
 from driver import *
 
 questdb_query = """
-SELECT COUNT(*) FROM (SELECT * FROM ujfievep) AS T1 WHERE True AND True AND True AND c2 NOT BETWEEN NULL AND NOW() SAMPLE BY 1d
+SELECT 1 FROM telemetry AS T3 WHERE 1 AND CASE WHEN 1 THEN 1 ELSE T3.CASE WHEN 1 THEN 1 ELSE 1 END END
 """
 # select sample_by_d_result from (SELECT count(*) as sample_by_d_result, extract(day from c2) as h from hgjopowp group by h)
 
