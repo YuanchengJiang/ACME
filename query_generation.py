@@ -3,6 +3,7 @@ import datetime
 from clause_map import ClauseMapping, async_mapping
 from random import choice, randint, random
 
+
 # generating random strings for insert statements
 def random_string():
     return "{}".format(''.join(choice(string.ascii_lowercase) for _ in range(randint(1,5))))
@@ -10,7 +11,7 @@ def random_string():
 # generating random timestamps for insert statements
 
 def random_timestamp():
-    return datetime.datetime(randint(2024,2025),randint(11,12),randint(11,12),randint(11,12),randint(11,12))
+    return datetime.datetime.now()
 
 # generating random table name with 8 lowercase letters
 def random_8_letters():
@@ -57,19 +58,15 @@ class AsyncQueryGenerator:
             if choice([True,False]):
                 if each_shared_clause=="IN":
                     in_predicates = [
-                        f"{column_name} IN (0,{self.fuzzy_exp()})",
-                        f"{column_name} NOT IN (0,1,2,{self.fuzzy_exp()})",
+                        f"{column_name} IN (0,NULL)",
+                        f"{column_name} NOT IN (0,1,2,NULL)",
+                        f"{column_name} NOT IN (NULL)",
+                        f"{column_name} NOT IN (0)",
                     ]
                     predicates.append(choice(in_predicates))
                 elif each_shared_clause=="IN_SUBQUERY":
                     # TODO
                     pass
-                elif each_shared_clause=="BETWEEN":
-                    between_predicates = [
-                        f"{column_name} BETWEEN {column_name} AND {column_name}",
-                        f"{column_name} NOT BETWEEN {column_name} AND {column_name}",
-                    ]
-                    predicates.append(choice(between_predicates))
         return ' AND '.join(predicates)
 
     def random_string_predicates(self, column_name):
@@ -84,19 +81,15 @@ class AsyncQueryGenerator:
             if choice([True,False]):
                 if each_shared_clause=="IN":
                     in_predicates = [
-                        f"{column_name} IN ({column_name},{self.fuzzy_exp()})",
-                        f"{column_name} NOT IN ('0','1','2',{self.fuzzy_exp()})",
+                        f"{column_name} IN ('0',NULL)",
+                        f"{column_name} NOT IN ('0','1','2',NULL)",
+                        f"{column_name} NOT IN ('0','1','2')",
+                        f"{column_name} NOT IN ('0')",
                     ]
                     predicates.append(choice(in_predicates))
                 elif each_shared_clause=="IN_SUBQUERY":
                     # TODO
                     pass
-                elif each_shared_clause=="BETWEEN":
-                    between_predicates = [
-                        f"{column_name} BETWEEN {column_name} AND {column_name}",
-                        f"{column_name} NOT BETWEEN {column_name} AND {column_name}",
-                    ]
-                    predicates.append(choice(between_predicates))
         return ' AND '.join(predicates)
 
     def random_timestamp_predicates(self, column_name):
@@ -111,8 +104,9 @@ class AsyncQueryGenerator:
             if choice([True,False]):
                 if each_shared_clause=="IN":
                     in_predicates = [
-                        f"{column_name} IN ({column_name},{self.fuzzy_exp()})",
-                        f"{column_name} NOT IN ('0','1','2',{self.fuzzy_exp()})",
+                        f"{column_name} IN ('2000-01-01T00:00:00', NULL)",
+                        f"{column_name} NOT IN ('2000-01-01T00:00:00', NULL)",
+                        f"{column_name} NOT IN ('2000-01-01T00:00:00', '2000-01-01T00:00:00')",
                     ]
                     predicates.append(choice(in_predicates))
                 elif each_shared_clause=="IN_SUBQUERY":
@@ -120,8 +114,10 @@ class AsyncQueryGenerator:
                     pass
                 elif each_shared_clause=="BETWEEN":
                     between_predicates = [
-                        f"{column_name} BETWEEN {column_name} AND {self.fuzzy_exp()}",
-                        f"{column_name} NOT BETWEEN {column_name} AND {self.fuzzy_exp()}",
+                        f"{column_name} BETWEEN {column_name} AND NOW()",
+                        f"{column_name} NOT BETWEEN {column_name} AND NULL",
+                        f"{column_name} NOT BETWEEN NULL AND {column_name}",
+                        f"{column_name} NOT BETWEEN NULL AND NOW()",
                     ]
                     predicates.append(choice(between_predicates))
         return ' AND '.join(predicates)
@@ -152,6 +148,8 @@ class AsyncQueryGenerator:
         create_query = f"CREATE TABLE {random_table_name} (c0 INT, c1 STRING, c2 TIMESTAMP);"
         async_queries = self.clause_mapping.main(create_query)
         # async_queries = _clause_mapping_string_type(create_query)
+        async_queries[0] = async_queries[0].replace(';', " timestamp(c2);")
+        # async_queries[1] = async_queries[1].replace('TIMESTAMP', 'TIMESTAMP with time zone')
         return random_table_name, async_queries
 
     def init_table(self, questdb_api, postgres_api):
@@ -186,7 +184,7 @@ class AsyncQueryGenerator:
         random_INT = randint(-1000, 1000)
         random_STRING = random_string()
         random_TIMESTAMP = random_timestamp()
-        values = f"{random_INT}, '{random_STRING}', '{random_TIMESTAMP}'"
+        values = f"{random_INT}, '{random_STRING}', '{random_TIMESTAMP}+00'"
         insert_query = f"INSERT INTO {table_name} VALUES ({values});"
         return insert_query
 
@@ -244,7 +242,7 @@ class AsyncQueryGenerator:
         return f"{choice(aggregation_foos)}({choice(self.columns)})"
 
     def random_data(self):
-        _data = []
+        _data = ["COUNT(*)"]
         if "CASE" in self.shared_clauses:
             column = choice(self.columns)
             _data.append(
@@ -267,7 +265,7 @@ class AsyncQueryGenerator:
             return _table_subquery
 
     def random_clause_join(self):
-        _join_tables = randint(1,3)
+        _join_tables = randint(0,2)
         _joins = ["JOIN"]
         if "CROSS_JOIN" in self.shared_clauses:
             _joins.append("CROSS JOIN")
@@ -291,7 +289,11 @@ class AsyncQueryGenerator:
         return " WHERE "+self.random_predicates_for_joins()
 
     def random_clause_partition(self):
-        return ""
+        # if "PARTITION" in self.shared_clauses and choice([True,False]):
+        #     _partition = "PARTITION BY DAY"
+        # else:
+        _partition = ""
+        return _partition
 
     def random_clause_interp(self):
         return ""
@@ -310,6 +312,13 @@ class AsyncQueryGenerator:
 
     def random_clause_limit(self):
         return ""
+
+    def random_clause_sample(self):
+        if "SAMPLE" in self.shared_clauses and choice([True,False]):
+            _sample = "SAMPLE BY 1d"
+        else:
+            _sample = ""
+        return _sample
 
     """
     5. overall mutation
@@ -361,7 +370,13 @@ class AsyncQueryGenerator:
         _having = self.random_clause_having()
         _order = self.random_clause_order()
         _limit = self.random_clause_limit()
-        select_query = f"{_with} SELECT {_data} FROM {_table} {_alias} {_join} {_predicate} {_partition} {_interp} {_window} {_group} {_having} {_order} {_limit}"
+        _sample = self.random_clause_sample() if _join=="" else ""
+
+        # it might need some constrains
+        if _sample!="":
+            _data = "COUNT(*)"
+
+        select_query = f"{_with} SELECT {_data} FROM {_table} {_alias} {_join} {_predicate} {_partition} {_sample} {_interp} {_window} {_group} {_having} {_order} {_limit}"
 
         if "CAST" in self.shared_clauses:
             select_query = self.query_mutation_add_cast(select_query)

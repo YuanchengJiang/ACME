@@ -33,6 +33,8 @@ class ClauseMapping:
         in_operations = self.extract_in_operations(query[0])
         for each_in_operation in in_operations:
             in_list = each_in_operation.split(' ')[-1]
+            if "'" not in in_list:
+                in_list = in_list.replace('0',"'0'").replace('1',"'1'").replace('2',"'2'")
             query[0] = query[0].replace(
                 each_in_operation,
                 f"CASE WHEN NULL IN {in_list} THEN NULL ELSE {each_in_operation} END"
@@ -79,7 +81,7 @@ class ClauseMapping:
         # 1. no continuous spaces
         query = re.sub('[ ]+', ' ', query)
         # 2. no space between commas
-        query = re.sub(' ,', ',', query)
+        query = re.sub(', ', ',', query)
         return query
 
 
