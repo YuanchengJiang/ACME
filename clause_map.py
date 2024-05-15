@@ -38,7 +38,7 @@ class ClauseMapping:
                 in_list = in_list.replace('0',"'0'").replace('1',"'1'").replace('2',"'2'")
             query[0] = query[0].replace(
                 each_in_operation,
-                f"CASE WHEN {in_target} IS NULL THEN NULL::STRING WHEN NULL IN {in_list} THEN NULL::STRING ELSE {each_in_operation} END"
+                f"CASE WHEN {in_target} IS NULL THEN NULL::BOOLEAN ELSE {each_in_operation} END"
                 )
         return query
 
@@ -71,7 +71,7 @@ class ClauseMapping:
             C = each_between_operation.split('AND ')[1]
             query[0] = query[0].replace(
                 each_between_operation,
-                f"CASE WHEN {A} IS NULL THEN NULL::STRING WHEN {B} IS NULL THEN NULL::STRING WHEN {C} IS NULL THEN NULL::STRING ELSE {each_between_operation} END"
+                f"CASE WHEN {A} IS NULL THEN NULL::BOOLEAN WHEN {B} IS NULL THEN NULL::BOOLEAN WHEN {C} IS NULL THEN NULL::BOOLEAN ELSE {each_between_operation} END"
                 )
         return query
 
@@ -103,7 +103,7 @@ class ClauseMapping:
         # this is just an demo implementation
         # ASSUMPTION: only fetct COUNT(*), use SAMPLE BY 1d
         # step 1 and step 3:
-        col = 'COUNT(*) AS sample_by_result, EXTRACT(DAY FROM c2) AS d'
+        col = 'COUNT(*) AS sample_by_result, EXTRACT(DAY FROM T1.c2) AS d'
         query = query.replace('COUNT(*)', col)
         # step 2:
         query = query.replace('SAMPLE BY 1d', 'GROUP BY d')

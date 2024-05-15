@@ -126,7 +126,7 @@ def main():
                 postgres_success_query_count+=1
             if "SELECT " in query[0] and "SELECT " in query[1]:
                 result_analysis(query[0]+'\n'+query[1], questdb_result, postgres_result)
-            if i%20==0:
+            if i%100==0:
                 print(f"questdb query success rate:{float(questdb_success_query_count/(i+1))}")
                 print(f"postgres query success rate:{float(postgres_success_query_count/(i+1))}")
             questdb_testing_log(query[0])
