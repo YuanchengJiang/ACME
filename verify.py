@@ -2,7 +2,7 @@ from driver import *
 
 # SELECT COUNT(T1.c2) FROM wnkvvhhg AS T1 WHERE CASE WHEN T1.c0 IS NULL THEN NULL::BOOLEAN ELSE T1.c0 NOT IN (0,1,2,NULL) END
 questdb_query = """
-SELECT CASE WHEN T1.c0 IN (0,1,2,NULL) THEN NULL::BOOLEAN ELSE T1.c0 IN (0,1,2,NULL) END FROM wnkvvhhg AS T1
+SELECT COUNT(*) FROM (SELECT * FROM gnmrermd) AS T1 WHERE CASE WHEN T1.c0 IS NULL THEN NULL::BOOLEAN ELSE T1.c0 NOT IN (NULL) END SAMPLE BY 1d
 """
 # select sample_by_d_result from (SELECT count(*) as sample_by_d_result, extract(day from c2) as h from hgjopowp group by h)
 
@@ -14,7 +14,7 @@ SELECT CASE WHEN T1.c0 IN (0,1,2,NULL) THEN NULL::BOOLEAN ELSE T1.c0 IN (0,1,2,N
 
 # SELECT COUNT(T1.c2) FROM wnkvvhhg AS T1 WHERE T1.c0 NOT IN (0,1,2,NULL)
 postgres_query = """
-SELECT T1.c0 IN (0,1,2,NULL) FROM wnkvvhhg AS T1
+SELECT sample_by_result from ( SELECT COUNT(*) AS sample_by_result, EXTRACT(DAY FROM T1.c2) AS d FROM (SELECT * FROM gnmrermd) AS T1 WHERE CASE WHEN T1.c0 IS NULL THEN NULL ELSE T1.c0 NOT IN (NULL) END GROUP BY d )
 """
 # select case when '0' IS null then null when null in ('0', null) then null else '0' in ('0', null) end
 # SELECT count(*) from zyzsbegn where 1 AND (CASE WHEN NULL IN (NULL) THEN NULL ELSE NULL IN (NULL) END)

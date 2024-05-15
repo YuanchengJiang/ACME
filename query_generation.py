@@ -60,7 +60,7 @@ class AsyncQueryGenerator:
                     in_predicates = [
                         f"{column_name} IN (0,NULL)",
                         f"{column_name} NOT IN (0,1,2,NULL)",
-                        f"{column_name} NOT IN (NULL)",
+                        f"{column_name} NOT IN (0,NULL)",
                         f"{column_name} NOT IN (0)",
                     ]
                     predicates.append(choice(in_predicates))
@@ -129,11 +129,11 @@ class AsyncQueryGenerator:
         predicates.append(self.random_timestamp_predicates("c2"))
         return ' AND '.join(predicates)
 
-    def random_predicates_for_joins(self):
+    def random_predicates_for_joins(self, talias=None):
         predicates = []
-        predicates.append(self.random_int_predicates("c0"))
-        predicates.append(self.random_string_predicates("c1"))
-        predicates.append(self.random_timestamp_predicates("c2"))
+        predicates.append(self.random_int_predicates("c0" if talias==None else f"{choice(talias)}.c0"))
+        predicates.append(self.random_string_predicates("c1" if talias==None else f"{choice(talias)}.c1"))
+        predicates.append(self.random_timestamp_predicates("c2" if talias==None else f"{choice(talias)}.c2"))
         # predicates.append(
         #     f"CAST({choice(self.talias)}.{choice(self.columns)} AS SYMBOL) <> CAST({choice(self.talias)}.{choice(self.columns)} AS SYMBOL)"
         # )
@@ -281,8 +281,11 @@ class AsyncQueryGenerator:
             self.tt.append(f"T{i+2}")
             self.talias.append(f"T{i+2}")
             if join_clause!="CROSS JOIN":
-                next_join += " ON "+self.random_predicates_for_joins()
+                next_join += " ON "+self.random_predicates_for_joins(self.talias)
             joins.append(next_join)
+        # print(' '.join(joins))
+        # print(self.talias)
+        # input()
         return ' '.join(joins)
 
     def random_predicate(self):
@@ -334,6 +337,8 @@ class AsyncQueryGenerator:
     to pre-check grammar issues
     """
     def select_query_sanitize_check(self, query):
+        # print(query)
+        # print(self.talias)
         if "T1" in self.tt:
             # query = query.replace("c0", f"{choice(self.talias)}.c0")
             # query = query.replace("c1", f"{choice(self.talias)}.c1")
@@ -350,6 +355,7 @@ class AsyncQueryGenerator:
             query = query.replace("(c0,", f"({choice(self.talias)}.c0,")
             query = query.replace("(c1,", f"({choice(self.talias)}.c1,")
             query = query.replace("(c2,", f"({choice(self.talias)}.c2,")
+        # print(query)
         return query
 
     def adhoc_final_query_sanitize_check(self, query):
@@ -436,6 +442,8 @@ class AsyncQueryGenerator:
             insert_query = self.random_insert_query(choice(self.tables))
             insert_query = self.clause_mapping.main(insert_query)
             return_query = insert_query
+        # print(return_query[1])
+        # input()
         return_query[0] = self.adhoc_final_query_sanitize_check(return_query[0])
         return_query[1] = self.adhoc_final_query_sanitize_check(return_query[1])
         return return_query

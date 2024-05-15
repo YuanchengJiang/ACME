@@ -30,6 +30,7 @@ class ClauseMapping:
 
         # query[0] -> questdb query
 
+        # for questdb
         in_operations = self.extract_in_operations(query[0])
         for each_in_operation in in_operations:
             in_target = each_in_operation.split(' ')[0]
@@ -40,6 +41,20 @@ class ClauseMapping:
                 each_in_operation,
                 f"CASE WHEN {in_target} IS NULL THEN NULL::BOOLEAN ELSE {each_in_operation} END"
                 )
+
+        # for postgres
+        in_operations = self.extract_in_operations(query[1])
+        for each_in_operation in in_operations:
+            in_target = each_in_operation.split(' ')[0]
+            in_list = each_in_operation.split(' ')[-1]
+            if "'" not in in_list:
+                in_list = in_list.replace('0',"'0'").replace('1',"'1'").replace('2',"'2'")
+            new_in_operation = each_in_operation.replace(',NULL','').replace('(NULL)','()')
+            query[1] = query[1].replace(
+                each_in_operation,
+                f"CASE WHEN {in_target} IS NULL THEN NULL ELSE {new_in_operation} END"
+                )
+
         return query
 
     def extract_between_operations(self, query):

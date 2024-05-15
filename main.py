@@ -77,7 +77,8 @@ def result_analysis(query, questdb_result, postgres_result):
                     postgres_result[i][j] = float(postgres_result[i][j])
             postgres_result[i] = tuple(postgres_result[i])
     if set(questdb_result)!=set(postgres_result):
-        bugstr = f"\nQuery:{query}\n"
+        bugstr = f"\nQuestDB Query:{query[0]}\n"
+        bugstr += f"\nPostgresDB Query:{query[1]}\n"
         bugstr += f"\n\tquestdb:{str(set(questdb_result))}"
         bugstr += f"\n\tpostgres:{str(set(postgres_result))}"
         bug_log(bugstr)
@@ -125,7 +126,7 @@ def main():
             if postgres_result!=-1:
                 postgres_success_query_count+=1
             if "SELECT " in query[0] and "SELECT " in query[1]:
-                result_analysis(query[0]+'\n'+query[1], questdb_result, postgres_result)
+                result_analysis(query, questdb_result, postgres_result)
             if i%100==0:
                 print(f"questdb query success rate:{float(questdb_success_query_count/(i+1))}")
                 print(f"postgres query success rate:{float(postgres_success_query_count/(i+1))}")
