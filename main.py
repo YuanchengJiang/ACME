@@ -38,11 +38,13 @@ def questdb_execute_query(questdb_qpi, query):
             return result
         except Exception as e:
             questdb_exception_log(f"\nquery:{query}\n"+str(e))
+            return -1
     else:
         try:
             questdb_qpi.write_query(query)
         except Exception as e:
             questdb_exception_log(f"\nquery:{query}\n"+str(e))
+            return -1
         return None
 
 def postgres_execute_query(postgre_api, query):
@@ -53,16 +55,18 @@ def postgres_execute_query(postgre_api, query):
         except Exception as e:
             postgre_api.reconnect()
             postgres_exception_log(f"\nquery:{query}\n"+str(e))
+            return -1
     else:
         try:
             postgre_api.write_query(query)
         except Exception as e:
             postgre_api.reconnect()
             postgres_exception_log(f"\nquery:{query}\n"+str(e))
+            return -1
         return None
 
 def result_analysis(query, questdb_result, postgres_result):
-    if questdb_result==None or postgres_result==None:
+    if questdb_result==None or postgres_result==None or questdb_result==-1 or postgres_result==-1:
         bugstr = f"\nQuery:{query}\nnone result\n"
         return
     if len(postgres_result)>0:
@@ -109,13 +113,22 @@ def main():
         query_generator.init_table(questdb_api, postgres_api)
         testing_round += 1
         print(f"testing round {testing_round}")
+        questdb_success_query_count = 0
+        postgres_success_query_count = 0
         for i in tqdm(range(10000)):
             query = query_generator.random_query()
             # print(query)
             questdb_result = questdb_execute_query(questdb_api, query[0])
+            if questdb_result!=-1:
+                questdb_success_query_count+=1
             postgres_result = postgres_execute_query(postgres_api, query[1])
+            if postgres_result!=-1:
+                postgres_success_query_count+=1
             if "SELECT " in query[0] and "SELECT " in query[1]:
                 result_analysis(query[0]+'\n'+query[1], questdb_result, postgres_result)
+            if i%20==0:
+                print(f"questdb query success rate:{float(questdb_success_query_count/(i+1))}")
+                print(f"postgres query success rate:{float(postgres_success_query_count/(i+1))}")
             questdb_testing_log(query[0])
             postgres_testing_log(query[1])
 

@@ -32,12 +32,46 @@ class ClauseMapping:
 
         in_operations = self.extract_in_operations(query[0])
         for each_in_operation in in_operations:
+            in_target = each_in_operation.split(' ')[0]
             in_list = each_in_operation.split(' ')[-1]
             if "'" not in in_list:
                 in_list = in_list.replace('0',"'0'").replace('1',"'1'").replace('2',"'2'")
             query[0] = query[0].replace(
                 each_in_operation,
-                f"CASE WHEN NULL IN {in_list} THEN NULL ELSE {each_in_operation} END"
+                f"CASE WHEN {in_target} IS NULL THEN NULL::STRING WHEN NULL IN {in_list} THEN NULL::STRING ELSE {each_in_operation} END"
+                )
+        return query
+
+    def extract_between_operations(self, query):
+        between_operations = []
+        # assume no continous spaces in the query
+        query_splits = query.split(' ')
+        for i in range(len(query_splits)):
+            if query_splits[i]=="BETWEEN":
+                between_operations.append(
+                    f"{query_splits[i-1]} BETWEEN {query_splits[i+1]} {query_splits[i+2]} {query_splits[i+3]}"
+                ) if query_splits[i-1]!="NOT" else between_operations.append(
+                    f"{query_splits[i-2]} NOT BETWEEN {query_splits[i+1]} {query_splits[i+2]} {query_splits[i+3]}"
+                )
+        return between_operations
+
+    def _clause_mapping_between_mutation(self, query):
+        # this mapping aims to bridge the semantic gap in questdb
+        # NULL in questdb is a specific value
+        # we need to nullify results when necessary, which aligns with postgres
+
+        # query[0] -> questdb query
+
+        between_operations = self.extract_between_operations(query[0])
+        for each_between_operation in between_operations:
+            between_keyword = "NOT BETWEEN" if "NOT BETWEEN" in each_between_operation else "BETWEEN"
+            # A BETWEEN B AND C
+            A = each_between_operation.split(f' {between_keyword}')[0]
+            B = each_between_operation.split(f'{between_keyword} ')[1].split(' AND')[0]
+            C = each_between_operation.split('AND ')[1]
+            query[0] = query[0].replace(
+                each_between_operation,
+                f"CASE WHEN {A} IS NULL THEN NULL::STRING WHEN {B} IS NULL THEN NULL::STRING WHEN {C} IS NULL THEN NULL::STRING ELSE {each_between_operation} END"
                 )
         return query
 
@@ -96,6 +130,9 @@ class ClauseMapping:
             # when SAMPLE BY is used in questdb query
             # we map SAMPLE BY back to valid clauses in postgres
             mapped_query[1] = self._clause_mapping_sample_by(mapped_query[1])
+
+        # map NULL with between:
+        mapped_query = self._clause_mapping_between_mutation(mapped_query)
 
         return mapped_query
 
