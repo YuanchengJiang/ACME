@@ -1,8 +1,12 @@
 from driver import *
 
+valid_expressions = [
+    "CAST(1 AS FLOAT)", "CAST(NULL AS FLOAT)", "CAST(0.0 AS FLOAT)", "CAST('0' AS FLOAT)", "CAST(0-0 AS FLOAT)", "CAST(CAST(NULL AS INT) AS FLOAT)", "CAST(CAST('0' AS INT) AS FLOAT)", "CAST(CAST('0' AS FLOAT) AS INT)", "~CAST(NULL AS INT)", "~CAST(0.0 AS INT)", "~NULL::INT", "CAST(NULL AS INT)&CAST(NULL AS INT)", "CAST(NULL AS INT)&(~NULL::INT)", "CAST(NULL AS INT)^CAST(NULL AS INT)", "CAST(NULL AS INT)^(~NULL::INT)", "CAST(NULL AS INT)|CAST(NULL AS INT)", "CAST(NULL AS INT)|(~NULL::INT)", "'5'<>'5'", "'123'<'456'", "CAST(CAST('123'<'456' AS INT)|(~NULL::INT) AS INT)^CAST(NULL AS INT)"
+]
+
 # SELECT COUNT(T1.c2) FROM wnkvvhhg AS T1 WHERE CASE WHEN T1.c0 IS NULL THEN NULL::BOOLEAN ELSE T1.c0 NOT IN (0,1,2,NULL) END
 questdb_query = """
-SELECT COUNT(*) FROM (SELECT * FROM gnmrermd) AS T1 WHERE CASE WHEN T1.c0 IS NULL THEN NULL::BOOLEAN ELSE T1.c0 NOT IN (NULL) END SAMPLE BY 1d
+SELECT avg(c0) over(partition by c0 order by True) from kcouqsws
 """
 # select sample_by_d_result from (SELECT count(*) as sample_by_d_result, extract(day from c2) as h from hgjopowp group by h)
 
@@ -14,8 +18,9 @@ SELECT COUNT(*) FROM (SELECT * FROM gnmrermd) AS T1 WHERE CASE WHEN T1.c0 IS NUL
 
 # SELECT COUNT(T1.c2) FROM wnkvvhhg AS T1 WHERE T1.c0 NOT IN (0,1,2,NULL)
 postgres_query = """
-SELECT sample_by_result from ( SELECT COUNT(*) AS sample_by_result, EXTRACT(DAY FROM T1.c2) AS d FROM (SELECT * FROM gnmrermd) AS T1 WHERE CASE WHEN T1.c0 IS NULL THEN NULL ELSE T1.c0 NOT IN (NULL) END GROUP BY d )
+SELECT CASE WHEN NULL IS NULL THEN NULL ELSE NULL IN ('0') END
 """
+postgres_query = questdb_query
 # select case when '0' IS null then null when null in ('0', null) then null else '0' in ('0', null) end
 # SELECT count(*) from zyzsbegn where 1 AND (CASE WHEN NULL IN (NULL) THEN NULL ELSE NULL IN (NULL) END)
 # SELECT CASE WHEN NULL IN (NULL) THEN NULL ELSE NULL IN (NULL) END

@@ -1,9 +1,16 @@
 import re
+from random import choice
 
 # map structure: {syntax_in_questdb: syntax_in_postgres}
 
 # for some complex mappings, it requires query mutations
 # pattern: "_MUTATION_XXX"
+
+def valid_expression():
+    valid_expressions = [
+        "CAST(1 AS FLOAT)", "CAST(NULL AS FLOAT)", "CAST(0.0 AS FLOAT)", "CAST('0' AS FLOAT)", "CAST(0-0 AS FLOAT)", "CAST(CAST(NULL AS INT) AS FLOAT)", "CAST(CAST('0' AS INT) AS FLOAT)", "CAST(CAST('0' AS FLOAT) AS INT)", "~CAST(NULL AS INT)", "~CAST(0.0 AS INT)", "~NULL::INT", "CAST(NULL AS INT)&CAST(NULL AS INT)", "CAST(NULL AS INT)&(~NULL::INT)", "CAST(NULL AS INT)^CAST(NULL AS INT)", "CAST(NULL AS INT)^(~NULL::INT)", "CAST(NULL AS INT)|CAST(NULL AS INT)", "CAST(NULL AS INT)|(~NULL::INT)", "'5'<>'5'", "'123'<'456'", "CAST(CAST('123'<'456' AS INT)|(~NULL::INT) AS INT)^CAST(NULL AS INT)"
+    ]
+    return choice(valid_expressions)
 
 class ClauseMapping:
 
@@ -158,29 +165,3 @@ class ClauseMapping:
         # 2. no space between commas
         query = re.sub(', ', ',', query)
         return query
-
-
-def _clause_mapping_sample_by():
-    return {"SAMPLE BY", "_MUTATION_SAMPLE_BY"}
-
-def _clause_mapping_sample_by_mutation(questdb_query):
-    postgres_query = ""
-    # mutation goes here
-    return postgres_query
-
-def _clause_mapping_latest_on():
-    return {"LATEST ON", "_MUTATION_LATEST_ON"}
-
-def _clause_mapping_latest_on_mutation(questdb_query):
-    postgres_query = ""
-    # mutation goes here
-    return postgres_query
-
-def clauses_mapping(shared_clauses, reserved_clauses, questdb_api, postgres_api):
-    extended_shared_clauses = shared_clauses+[]
-    return extended_shared_clauses
-
-def async_mapping(query):
-    questdb_query = query
-    postgres_query = query.replace("SYMBOL", "VARCHAR(64)")
-    return [questdb_query, postgres_query]
