@@ -1,0 +1,3 @@
+tqdm
+psycopg2-binary
+
