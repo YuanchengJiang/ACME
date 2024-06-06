@@ -7,10 +7,10 @@ os.system("rm /tmp/jacoco001.exec")
 
 start = time.time()
 
-# every 20 mins
-logtime = 1200
-next_logtime = 1200
-stoptime = 3600 + 60
+# every 60 mins
+logtime = 600
+next_logtime = 600
+stoptime = 3600*24 + 60
 
 approach = 'sqlancer'
 
@@ -28,7 +28,7 @@ while True:
     if length>next_logtime:
         os.system(f"java -jar /home/jyc/Desktop/DatabaseTesting/questdb-7.4.2-no-jre-bin/lib/jacococli.jar dump --address 127.0.0.1 --port 36320 --destfile /tmp/jacoco_{approach}_{next_logtime}.exec")
         print(f"{next_logtime} logged")
-        os.system(f"java -jar /home/jyc/Desktop/DatabaseTesting/questdb-7.4.2-no-jre-bin/lib/jacococli.jar report /tmp/jacoco_sqlancer_{next_logtime}.exec --html ./coverage_reports/report-html-{approach}-{next_logtime} --classfiles /home/jyc/Desktop/DatabaseTesting/questdb-7.4.2-no-jre-bin/questdb.jar")
+        os.system(f"java -jar /home/jyc/Desktop/DatabaseTesting/questdb-7.4.2-no-jre-bin/lib/jacococli.jar report /tmp/jacoco_{approach}_{next_logtime}.exec --html ./coverage_reports/report-html-{approach}-{next_logtime} --classfiles /home/jyc/Desktop/DatabaseTesting/questdb-7.4.2-no-jre-bin/questdb.jar")
         next_logtime += logtime
         print("report generated")
     if length>stoptime:

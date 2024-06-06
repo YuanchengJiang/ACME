@@ -32,6 +32,11 @@ def bug_log(logstr):
     f.write(f"\n===Bug-inducing Cases===\n{logstr}\n")
     f.close()
 
+def differential_inputs_log(logstr):
+    f = open("./diff_input.log", "a")
+    f.write(logstr)
+    f.close()
+
 def questdb_execute_query(questdb_qpi, query):
     if "SELECT " in query:
         try:
@@ -83,6 +88,9 @@ def result_analysis(query, questdb_result, postgres_result):
         bugstr += f"\n\tquestdb:{str(set(questdb_result))}"
         bugstr += f"\n\tpostgres:{str(set(postgres_result))}"
         bug_log(bugstr)
+    else:
+        differential_inputs_log(str([query[0], query[1]])+'\n')
+
 
 def main():
     if os.path.exists("./postgres_testing.log"):
@@ -95,6 +103,8 @@ def main():
         os.system("mv ./questdb_exception.log /tmp")
     if os.path.exists("./bug.log"):
         os.system("mv ./bug.log /tmp")
+    if os.path.exists("./diff_input.log"):
+        os.system("mv ./diff_input.log /tmp")
     """
     this is a demo code for testing one emerging database system QuestDB
     with the reference to mature relational database system Postgres
@@ -109,12 +119,18 @@ def main():
     # step 4: testing and analyzing
     testing_round = 0
     while True:
-        query_generator.init_table(questdb_api, postgres_api)
+        tables, table1_query, table2_query, table3_query = query_generator.init_table(questdb_api, postgres_api)
+        differential_inputs_log(str([f"DROP TABLE IF EXISTS {tables[0]}",f"DROP TABLE IF EXISTS {tables[0]}"])+'\n')
+        differential_inputs_log(str([f"DROP TABLE IF EXISTS {tables[1]}",f"DROP TABLE IF EXISTS {tables[1]}"])+'\n')
+        differential_inputs_log(str([f"DROP TABLE IF EXISTS {tables[2]}",f"DROP TABLE IF EXISTS {tables[2]}"])+'\n')
+        differential_inputs_log(str(table1_query)+'\n')
+        differential_inputs_log(str(table2_query)+'\n')
+        differential_inputs_log(str(table3_query)+'\n')
         testing_round += 1
         print(f"testing round {testing_round}")
         questdb_success_query_count = 0
         postgres_success_query_count = 0
-        for i in tqdm(range(10000)):
+        for i in tqdm(range(2000)):
             query = query_generator.random_query()
             # print(query)
             questdb_result = questdb_execute_query(questdb_api, query[0])
@@ -125,6 +141,8 @@ def main():
                 postgres_success_query_count+=1
             if "SELECT " in query[0] and "SELECT " in query[1]:
                 result_analysis(query, questdb_result, postgres_result)
+            else:
+                differential_inputs_log(str(query)+'\n')
             if i%100==0:
                 print(f"questdb query success rate:{float(questdb_success_query_count/(i+1))}")
                 print(f"postgres query success rate:{float(postgres_success_query_count/(i+1))}")

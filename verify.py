@@ -1,41 +1,32 @@
 from driver import *
 
-valid_expressions = [
-    "CAST(1 AS FLOAT)", "CAST(NULL AS FLOAT)", "CAST(0.0 AS FLOAT)", "CAST('0' AS FLOAT)", "CAST(0-0 AS FLOAT)", "CAST(CAST(NULL AS INT) AS FLOAT)", "CAST(CAST('0' AS INT) AS FLOAT)", "CAST(CAST('0' AS FLOAT) AS INT)", "~CAST(NULL AS INT)", "~CAST(0.0 AS INT)", "~NULL::INT", "CAST(NULL AS INT)&CAST(NULL AS INT)", "CAST(NULL AS INT)&(~NULL::INT)", "CAST(NULL AS INT)^CAST(NULL AS INT)", "CAST(NULL AS INT)^(~NULL::INT)", "CAST(NULL AS INT)|CAST(NULL AS INT)", "CAST(NULL AS INT)|(~NULL::INT)", "'5'<>'5'", "'123'<'456'", "CAST(CAST('123'<'456' AS INT)|(~NULL::INT) AS INT)^CAST(NULL AS INT)"
-]
+questdb_only = False
 
-# SELECT COUNT(T1.c2) FROM wnkvvhhg AS T1 WHERE CASE WHEN T1.c0 IS NULL THEN NULL::BOOLEAN ELSE T1.c0 NOT IN (0,1,2,NULL) END
 questdb_query = """
-SELECT avg(c0) over(partition by c0 order by True) from kcouqsws
+select * from test2 latest on c2 partition by c1
 """
-# select sample_by_d_result from (SELECT count(*) as sample_by_d_result, extract(day from c2) as h from hgjopowp group by h)
 
-#
-#SELECT count(*), (c2/3600 as hour) from zjldmnec SAMPLE BY 1d
-#SELECT CAST(c2 AS INT)/3600 AS h from dxcuijjy
-# SELECT sample_by_result from ( SELECT COUNT(*) AS sample_by_result, EXTRACT(DAY FROM T1.c2) AS d FROM mjypnsxk AS T1 WHERE True AND T1.c0 IN (0,NULL) AND True AND True GROUP BY d )
-# SELECT '2' IN (NULL,'2',NULL)
-
-# SELECT COUNT(T1.c2) FROM wnkvvhhg AS T1 WHERE T1.c0 NOT IN (0,1,2,NULL)
 postgres_query = """
-SELECT CASE WHEN NULL IS NULL THEN NULL ELSE NULL IN ('0') END
+select distinct * from (select t1.c0,t1.c1,t1.c2 from test as t1 join (select distinct
+max(c0) over(partition by c1) as c0, c1 from test) as t2 on t1.c0=t2.c0 and t1.c1=t2.c1) latest_on
 """
-postgres_query = questdb_query
-# select case when '0' IS null then null when null in ('0', null) then null else '0' in ('0', null) end
-# SELECT count(*) from zyzsbegn where 1 AND (CASE WHEN NULL IN (NULL) THEN NULL ELSE NULL IN (NULL) END)
-# SELECT CASE WHEN NULL IN (NULL) THEN NULL ELSE NULL IN (NULL) END
-# SELECT CASE WHEN NULL IN (1,NULL) THEN NULL ELSE NULL IN (1,NULL) END
-# SELECT CASE WHEN False IN (False) THEN False ELSE False IN (False) END
-# SELECT CASE WHEN NULL IN (NULL) THEN NULL ELSE NULL IN (NULL) END
-# SELECT CASE WHEN NULL IN (NULL) THEN NULL ELSE NULL IN (NULL) END
 
 postgres_api = PostgresConnector()
 questdb_api = QuestDBConnector()
 
-postgres_result = postgres_api.query(query=postgres_query)
-questdb_result = questdb_api.query(query=questdb_query)
+if "SELECT " in postgres_query:
+    if not questdb_only:
+        postgres_result = postgres_api.query(query=postgres_query)
+    questdb_result = questdb_api.query(query=questdb_query)
+else:
+    if not questdb_only:
+        postgres_result = postgres_api.write_query(query=postgres_query)
+    questdb_result = questdb_api.write_query(query=questdb_query)
 
-print("postgres_result:")
-print(postgres_result)
+if not questdb_only:
+    print("postgres_result:")
+    print(postgres_result)
+# print(len(postgres_result))
 print("questdb_result:")
 print(questdb_result)
+# print(len(questdb_result))

@@ -183,6 +183,7 @@ class AsyncQueryGenerator:
             exit(-1)
         self.tables = [table1_name, table2_name, table3_name]
         print("tables init finished!")
+        return self.tables, table1_create_query, table2_create_query, table3_create_query
 
     """
     2. INSERT statement
