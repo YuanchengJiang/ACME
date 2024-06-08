@@ -23,10 +23,10 @@ def valid_expression():
     ]
     return choice(valid_expressions)
 
-class AsyncQueryGenerator:
+class QueryGenerator:
     """
     this is only for SQL demonstration
-    asynchronous query generation aims to generate semantically equivalent
+    differential query generation aims to generate semantically equivalent
     but in different representations differential inputs for testing
     """
 
@@ -151,15 +151,15 @@ class AsyncQueryGenerator:
         random_table_name = random_8_letters()
         create_query = f"CREATE TABLE {random_table_name} (c0 INT, c1 STRING, c2 TIMESTAMP);"
         if self.EVAL_CONFIG_CLAUSE_MAPPING:
-            async_queries = self.clause_mapping.main(create_query)
-            async_queries[0] = async_queries[0].replace(';',' timestamp(c2);')
+            queries = self.clause_mapping.main(create_query)
+            queries[0] = queries[0].replace(';',' timestamp(c2);')
         else:
             # having an ad-hoc patch for string type
             # otherwise no comparison result
             query0 = create_query.replace('STRING','SYMBOL')
             query1 = create_query.replace('STRING','VARCHAR(32)')
-            async_queries = [query0, query1]
-        return random_table_name, async_queries
+            queries = [query0, query1]
+        return random_table_name, queries
 
     def init_table(self, questdb_api, postgres_api):
         table1_name, table1_create_query = self.random_create_query()

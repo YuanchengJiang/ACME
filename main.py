@@ -2,8 +2,8 @@ import os
 import decimal
 from tqdm import tqdm
 from driver import *
-from clause_fuzzer import clauses_fuzzing
-from query_generation import AsyncQueryGenerator
+from clause_identification import clauses_identifying
+from query_generation import QueryGenerator
 
 EVAL_CONFIG_CLAUSE_MAPPING = True
 
@@ -112,10 +112,10 @@ def main():
     questdb_api = QuestDBConnector()
     postgres_api = PostgresConnector()
     # step 1: get shared clauses
-    shared_clauses = clauses_fuzzing(questdb_api, postgres_api)
+    shared_clauses = clauses_identifying(questdb_api, postgres_api)
     # step 2: extend the set of shated clauses via clause mappings
-    # step 3: generate asynchornous differential inputs for testing
-    query_generator = AsyncQueryGenerator(shared_clauses, EVAL_CONFIG_CLAUSE_MAPPING)
+    # step 3: generate differential inputs for testing
+    query_generator = QueryGenerator(shared_clauses, EVAL_CONFIG_CLAUSE_MAPPING)
     # step 4: testing and analyzing
     testing_round = 0
     while True:
