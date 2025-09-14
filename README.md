@@ -1,23 +1,42 @@
-# SQLxDiff
+# ACME
 
-The key idea of SQLxDiff is to expand the working scope of differential testing on database management systems by adopting SQL query mappings between old and new database instances. We observe that small efforts into query mappings pay off with greater testing coverage. 
+**ACME (Automated Clause Mapping Engine)** expands the scope of differential testing for database management systems by introducing **SQL clause mappings** between traditional and emerging database engines. Even a small number of mappings can greatly improve testing coverage. Nowe we find, with the help of LLMs, these mappings can now be automatically generated (LLM component will be updated in the future).
 
-See more details at https://arxiv.org/abs/2501.01236
+This repository contains the **demonstration code for ACME**, showcasing its functionality with **QuestDB** and **PostgreSQL**.
 
-**This is the demonstration code for SQLxDiff, showcasing its functionality with QuestDB and Postgres.**
+---
 
-## Setup
+## ⚙️ Setup
 
-### Prerequisites
+1. Run setup:
 
-- Ensure you have set up the related databases (QuestDB and Postgres). Please refer to `driver.py` for the connection details.
-- Python (version 3.8 or later) installed.
-- Install necessary Python libraries using `pip install -r requirements.txt`.
+   ```bash
+   bash setup.sh
+   ```
+2. Activate environment:
 
-### Usage
+   ```bash
+   source pyenv/bin/activate
+   ```
 
-- Run the main script to start the comparison: `python main.py`
+3. Start testing:
 
-### Bugs
+   ```bash
+   python main.py
+   ```
 
-- See https://github.com/questdb/questdb/issues?q=is%3Aissue+author%3AYuanchengJiang+
+---
+
+## 📊 Result Analysis
+
+* **Logic bug reports:** `./bug.log`
+* **Differential query pairs (QuestDB ↔ PostgreSQL):** `./diff_input.log`
+* **Full query logs:** `./questdb_testing.log`, `./postgres_testing.log`
+* **Exception logs (potential internal errors):** `./questdb_exception.log`
+
+---
+
+## 🐞 Reported Bugs
+
+See issues reported via ACME:
+[QuestDB GitHub Issues](https://github.com/questdb/questdb/issues?q=author%3AYuanchengJiang)
